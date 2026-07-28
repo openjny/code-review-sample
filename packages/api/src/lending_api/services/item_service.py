@@ -1,5 +1,6 @@
 """備品に関するユースケース。"""
 
+from lending_core.cache import aggregate_cache
 from lending_core.enums import ItemCategory, ItemStatus
 from lending_core.errors import ItemNotAvailableError, NotFoundError, ValidationError
 from lending_core.models import Item
@@ -54,6 +55,7 @@ class ItemService:
         for field, value in payload.model_dump(exclude_unset=True).items():
             setattr(item, field, value)
         self._db.commit()
+        aggregate_cache.invalidate_prefix("aggregate:")
         return ItemRead.model_validate(item)
 
     def retire_item(self, item_id: int) -> ItemRead:
@@ -63,6 +65,7 @@ class ItemService:
             raise ItemNotAvailableError("貸出中の備品は廃棄できません")
         item.status = ItemStatus.RETIRED
         self._db.commit()
+        aggregate_cache.invalidate_prefix("aggregate:")
         return ItemRead.model_validate(item)
 
     def _get_or_raise(self, item_id: int) -> Item:
