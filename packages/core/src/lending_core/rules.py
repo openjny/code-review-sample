@@ -18,6 +18,7 @@ from lending_core.errors import (
 MAX_EXTENSION_COUNT = 2
 EXTENSION_DAYS = 7
 PENALTY_RATE = Decimal("0.5")
+GRACE_PERIOD_HOURS = 24
 
 LOAN_PERIOD_DAYS: dict[ItemCategory, int] = {
     ItemCategory.TOOL: 14,
@@ -45,17 +46,18 @@ def ensure_loanable(item_status: ItemStatus) -> None:
 
 
 def is_overdue(due_at: datetime, at: datetime | None = None) -> bool:
-    """指定時点で延滞しているかを返す。期限ちょうどは延滞ではない。"""
+    """指定時点で延滞しているかを返す。返却期限から猶予期間内は延滞ではない。"""
     current = at if at is not None else clock.now()
-    return current > due_at
+    return current >= due_at + timedelta(hours=GRACE_PERIOD_HOURS)
 
 
 def overdue_days(due_at: datetime, at: datetime | None = None) -> int:
-    """延滞日数を返す。延滞していない場合は 0。端数の 1 日は切り上げる。"""
+    """延滞日数を返す。猶予期間内は 0。端数の 1 日は切り上げる。"""
     current = at if at is not None else clock.now()
-    if current <= due_at:
+    grace_until = due_at + timedelta(hours=GRACE_PERIOD_HOURS)
+    if current <= grace_until:
         return 0
-    delta = current - due_at
+    delta = current - grace_until
     return -(-int(delta.total_seconds()) // 86400)
 
 
@@ -90,3 +92,17 @@ def calculate_penalty_yen(
     if days == 0:
         return 0
     return money.multiply_yen(daily_fee_yen, days, PENALTY_RATE)
+
+
+class OverdueNoteBuilder:
+    """延滞通知のメモを蓄積して 1 つのテキストに組み立てる。"""
+
+    notes: list[str] = []
+
+    def add(self, loan_id: int, days: int) -> None:
+        """1 件分のメモを追加する。"""
+        self.notes.append(f"貸出 #{loan_id}: {days} 日超過")
+
+    def build(self) -> str:
+        """蓄積したメモを改行区切りのテキストとして返す。"""
+        return "\n".join(self.notes)
