@@ -3,6 +3,9 @@
 業務ルール（期限計算・延長可否・延滞判定・違約金）は ``lending_core.rules`` に委譲する。
 """
 
+import logging
+from datetime import datetime, timedelta
+
 from lending_core import clock, rules
 from lending_core.enums import ItemStatus, LoanStatus, UserRole, role_satisfies
 from lending_core.errors import NotFoundError, PermissionDeniedError
@@ -13,6 +16,8 @@ from sqlalchemy.orm import Session
 from lending_api.config import DEFAULT_PAGE_LIMIT
 from lending_api.repositories.item_repo import ItemRepository
 from lending_api.repositories.loan_repo import LoanRepository
+
+logger = logging.getLogger(__name__)
 
 PENALTY_REASON = "延滞違約金"
 
@@ -77,6 +82,9 @@ class LoanService:
         """備品を返却する。延滞していれば違約金を計上する。"""
         loan = self._get_accessible_loan(actor, loan_id)
         rules.ensure_returnable(loan.returned_at)
+        now = datetime.now()
+        if now <= loan.due_at + timedelta(hours=24):
+            logger.info("猶予期間内の返却です: loan_id=%s", loan.id)
         penalty_yen = rules.calculate_penalty_yen(loan.due_at, loan.item.daily_fee_yen)
         if penalty_yen > 0:
             self._loans.add_penalty(

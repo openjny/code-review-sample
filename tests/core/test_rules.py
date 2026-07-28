@@ -66,15 +66,19 @@ def test_is_overdue_is_false_exactly_at_due_at() -> None:
     assert rules.is_overdue(DUE_AT, DUE_AT) is False
 
 
-def test_is_overdue_is_true_one_second_after_due_at() -> None:
-    assert rules.is_overdue(DUE_AT, DUE_AT + timedelta(seconds=1)) is True
+def test_is_overdue_is_false_within_grace_period() -> None:
+    assert rules.is_overdue(DUE_AT, DUE_AT + timedelta(hours=23, minutes=59)) is False
+
+
+def test_is_overdue_is_true_after_grace_period() -> None:
+    assert rules.is_overdue(DUE_AT, DUE_AT + timedelta(hours=24, seconds=1)) is True
 
 
 def test_is_overdue_falls_back_to_clock_now_when_at_is_omitted(frozen_clock) -> None:
     frozen_clock.set(DUE_AT)
     assert rules.is_overdue(DUE_AT) is False
 
-    frozen_clock.advance(timedelta(seconds=1))
+    frozen_clock.advance(timedelta(hours=24, seconds=1))
     assert rules.is_overdue(DUE_AT) is True
 
 
@@ -84,12 +88,12 @@ def test_is_overdue_falls_back_to_clock_now_when_at_is_omitted(frozen_clock) -> 
         (timedelta(days=-1), 0),
         (timedelta(seconds=-1), 0),
         (timedelta(0), 0),
-        (timedelta(seconds=1), 1),
-        (timedelta(hours=23, minutes=59), 1),
-        (timedelta(hours=24), 1),
-        (timedelta(hours=25), 2),
-        (timedelta(days=2), 2),
-        (timedelta(days=2, seconds=1), 3),
+        (timedelta(hours=24, seconds=1), 1),
+        (timedelta(hours=47, minutes=59), 1),
+        (timedelta(hours=48), 1),
+        (timedelta(hours=49), 2),
+        (timedelta(days=3), 2),
+        (timedelta(days=3, seconds=1), 3),
     ],
 )
 def test_overdue_days_rounds_partial_days_up(elapsed: timedelta, expected_days: int) -> None:
@@ -97,7 +101,7 @@ def test_overdue_days_rounds_partial_days_up(elapsed: timedelta, expected_days: 
 
 
 def test_overdue_days_falls_back_to_clock_now_when_at_is_omitted(frozen_clock) -> None:
-    frozen_clock.set(DUE_AT + timedelta(hours=25))
+    frozen_clock.set(DUE_AT + timedelta(hours=49))
     assert rules.overdue_days(DUE_AT) == 2
 
 
@@ -117,7 +121,7 @@ def test_ensure_extendable_rejects_count_at_or_above_limit(extension_count: int)
 
 def test_ensure_extendable_rejects_overdue_loan() -> None:
     with pytest.raises(ExtensionLimitExceededError, match="延滞中"):
-        rules.ensure_extendable(0, DUE_AT, DUE_AT + timedelta(seconds=1))
+        rules.ensure_extendable(0, DUE_AT, DUE_AT + timedelta(hours=24, seconds=1))
 
 
 def test_ensure_extendable_accepts_loan_exactly_at_due_at() -> None:
@@ -142,10 +146,10 @@ def test_ensure_returnable_rejects_already_returned_loan() -> None:
     [
         (300, timedelta(days=-1), 0),
         (300, timedelta(0), 0),
-        (300, timedelta(days=2), 300),
-        (300, timedelta(days=2, seconds=1), 450),
-        (0, timedelta(days=5), 0),
-        (101, timedelta(days=1), 51),
+        (300, timedelta(days=3), 300),
+        (300, timedelta(days=3, seconds=1), 450),
+        (0, timedelta(days=6), 0),
+        (101, timedelta(days=2), 51),
     ],
 )
 def test_calculate_penalty_yen(daily_fee_yen: int, elapsed: timedelta, expected_yen: int) -> None:
@@ -153,5 +157,5 @@ def test_calculate_penalty_yen(daily_fee_yen: int, elapsed: timedelta, expected_
 
 
 def test_calculate_penalty_yen_falls_back_to_clock_now_when_at_is_omitted(frozen_clock) -> None:
-    frozen_clock.set(DUE_AT + timedelta(days=2))
+    frozen_clock.set(DUE_AT + timedelta(days=3))
     assert rules.calculate_penalty_yen(DUE_AT, 300) == 300
