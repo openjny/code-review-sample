@@ -11,7 +11,7 @@ from lending_api.config import get_settings
 from lending_api.db import init_db
 from lending_api.errors import register_exception_handlers
 from lending_api.middleware.logging import RequestLoggingMiddleware
-from lending_api.routers import items, loans, users
+from lending_api.routers import items, loans, reports, users
 
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(items.router, prefix=API_PREFIX)
     app.include_router(loans.router, prefix=API_PREFIX)
     app.include_router(users.router, prefix=API_PREFIX)
+    app.include_router(reports.router, prefix=API_PREFIX)
     return app
 
 

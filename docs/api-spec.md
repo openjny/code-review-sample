@@ -106,6 +106,29 @@
 }
 ```
 
+### レポート `/reports`
+
+| メソッド | パス | 必要ロール | 説明 |
+|---------|------|-----------|------|
+| GET | `/reports/summary` | staff | 期間集計 |
+| GET | `/reports/categories` | staff | カテゴリ別件数 |
+| GET | `/reports/penalties` | admin | 違約金明細 |
+
+いずれも `?start=` `?end=`（ISO 8601）を必須で受け取る。`/reports/summary` は追加で `?category=` `?sort_by=` `?order=` を受け取る。
+
+`ReportSummary`:
+
+```json
+{
+  "start": "2026-07-01T00:00:00Z",
+  "end": "2026-08-01T00:00:00Z",
+  "rows": [
+    { "category": "tool", "loan_count": 12, "return_count": 10, "total_penalty_yen": 1500 }
+  ],
+  "total_penalty_yen": 1500
+}
+```
+
 ## 業務ルール
 
 - 貸出期間はカテゴリ別（`docs/architecture.md` の依存ルール 5 に従い `lending_core.rules` に集約）。
