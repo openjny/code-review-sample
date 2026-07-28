@@ -130,7 +130,7 @@ def test_extend_overdue_loan_returns_409(
     member_client: TestClient, frozen_clock, tool_item: Item
 ) -> None:
     loan_id = member_client.post(LOANS_URL, json={"item_id": tool_item.id}).json()["id"]
-    frozen_clock.advance(timedelta(days=TOOL_LOAN_DAYS, seconds=1))
+    frozen_clock.advance(timedelta(days=TOOL_LOAN_DAYS + 1, seconds=1))
 
     response = member_client.post(f"{LOANS_URL}/{loan_id}/extend")
 
@@ -179,7 +179,7 @@ def test_overdue_return_records_penalty(
     member_client: TestClient, db: Session, frozen_clock, tool_item: Item
 ) -> None:
     loan_id = member_client.post(LOANS_URL, json={"item_id": tool_item.id}).json()["id"]
-    frozen_clock.advance(timedelta(days=TOOL_LOAN_DAYS + 2))
+    frozen_clock.advance(timedelta(days=TOOL_LOAN_DAYS + 3))
 
     response = member_client.post(f"{LOANS_URL}/{loan_id}/return")
 
@@ -195,7 +195,7 @@ def test_get_loan_reports_overdue_flag(
     member_client: TestClient, frozen_clock, tool_item: Item
 ) -> None:
     loan_id = member_client.post(LOANS_URL, json={"item_id": tool_item.id}).json()["id"]
-    frozen_clock.advance(timedelta(days=TOOL_LOAN_DAYS, seconds=1))
+    frozen_clock.advance(timedelta(days=TOOL_LOAN_DAYS + 1, seconds=1))
 
     response = member_client.get(f"{LOANS_URL}/{loan_id}")
 

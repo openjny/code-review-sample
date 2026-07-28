@@ -26,7 +26,7 @@ class OverdueNotificationResult:
     notified: int
 
 
-def _build_notification(loan: Loan, at: datetime) -> Notification:
+def _build_notification(loan: Loan, at: datetime) -> tuple[Notification, int]:
     days = rules.overdue_days(loan.due_at, at)
     penalty_yen = rules.calculate_penalty_yen(loan.due_at, loan.item.daily_fee_yen, at)
     body = (
@@ -34,14 +34,16 @@ def _build_notification(loan: Loan, at: datetime) -> Notification:
         f"ご利用中の備品「{loan.item.name}」({loan.item.asset_code}) が返却期限を超過しています。\n"
         f"返却期限: {loan.due_at.isoformat()}\n"
         f"延滞日数: {days} 日\n"
-        f"現時点の違約金: {penalty_yen} 円\n\n"
+        f"現時点の違約金: {penalty_yen} 円\n"
+        "※ 返却期限を過ぎています\n\n"
         "お早めにご返却ください。"
     )
-    return Notification(
+    notification = Notification(
         to_email=loan.user.email,
         subject=f"【延滞のお知らせ】{loan.item.name}",
         body=body,
     )
+    return notification, days
 
 
 def run(
@@ -58,21 +60,24 @@ def run(
     scanned = 0
     notified = 0
     offset = 0
+    note_builder = rules.OverdueNoteBuilder()
     while True:
         loans = repo.list_overdue_loans(at=current, limit=batch_size, offset=offset)
         if not loans:
             break
         for loan in loans:
             scanned += 1
-            notification = _build_notification(loan, current)
+            notification, days = _build_notification(loan, current)
             try:
                 target_notifier.send(notification)
             except Exception as e:
                 # 1 件の送信失敗で残りの通知を止めないため、記録のうえ次の貸出へ進む。
                 logger.warning("延滞通知の送信に失敗しました: loan_id=%s", loan.id, exc_info=e)
                 continue
+            note_builder.add(loan.id, days)
             notified += 1
         offset += len(loans)
 
     logger.info("延滞通知ジョブが完了しました: scanned=%d notified=%d", scanned, notified)
+    logger.info("延滞一覧:\n%s", note_builder.build())
     return OverdueNotificationResult(scanned=scanned, notified=notified)
