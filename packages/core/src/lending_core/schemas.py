@@ -73,6 +73,20 @@ class PenaltyRead(ORMModel):
     created_at: datetime
 
 
+class ReportRow(ORMModel):
+    category: ItemCategory
+    loan_count: int
+    return_count: int
+    penalty_total: float
+
+
+class ReportSummary(BaseModel):
+    start: datetime
+    end: datetime
+    rows: list[ReportRow]
+    penalty_total: float
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str

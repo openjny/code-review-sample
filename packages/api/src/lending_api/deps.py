@@ -14,6 +14,7 @@ from lending_api.repositories.user_repo import UserRepository
 from lending_api.services import auth_service
 from lending_api.services.item_service import ItemService
 from lending_api.services.loan_service import LoanService
+from lending_api.services.report_service import ReportService
 from lending_api.services.user_service import UserService
 
 BEARER_PREFIX = "Bearer "
@@ -37,6 +38,11 @@ def get_loan_service(db: Annotated[Session, Depends(get_db)]) -> LoanService:
 def get_user_service(db: Annotated[Session, Depends(get_db)]) -> UserService:
     """UserService を払い出す。"""
     return UserService(db)
+
+
+def get_report_service(db: Annotated[Session, Depends(get_db)]) -> ReportService:
+    """ReportService を払い出す。"""
+    return ReportService(db)
 
 
 def get_current_user(
