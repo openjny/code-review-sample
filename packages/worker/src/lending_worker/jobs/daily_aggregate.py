@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
 from lending_core import clock
+from lending_core.cache import aggregate_cache, aggregate_key
 from sqlalchemy.orm import Session
 
-from lending_worker.cache import aggregate_cache, aggregate_key
 from lending_worker.repositories.aggregate_repo import AggregateRepository
 
 logger = logging.getLogger(__name__)

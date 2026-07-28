@@ -1,5 +1,6 @@
 """FastAPI の依存関係。"""
 
+import logging
 from collections.abc import Callable, Iterator
 from typing import Annotated
 
@@ -15,6 +16,8 @@ from lending_api.services import auth_service
 from lending_api.services.item_service import ItemService
 from lending_api.services.loan_service import LoanService
 from lending_api.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
 
 BEARER_PREFIX = "Bearer "
 
@@ -39,6 +42,11 @@ def get_user_service(db: Annotated[Session, Depends(get_db)]) -> UserService:
     return UserService(db)
 
 
+async def _record_last_seen(user: User) -> None:
+    """利用者の最終アクセスを記録する。"""
+    logger.debug("最終アクセスを記録しました: user_id=%s", user.id)
+
+
 def get_current_user(
     db: Annotated[Session, Depends(get_db)],
     authorization: Annotated[str | None, Header()] = None,
@@ -46,12 +54,17 @@ def get_current_user(
     """Authorization ヘッダのトークンから利用者を解決する。"""
     if authorization is None or not authorization.startswith(BEARER_PREFIX):
         raise UnauthenticatedError("認証トークンが指定されていません")
-    user_id = auth_service.verify_token(authorization.removeprefix(BEARER_PREFIX))
+    token = authorization.removeprefix(BEARER_PREFIX)
+    try:
+        user_id = auth_service.verify_token(token)
+    except UnauthenticatedError as e:
+        raise PermissionDeniedError("トークンが無効です") from e
     user = UserRepository(db).get(user_id)
     if user is None:
         raise UnauthenticatedError("トークンに対応する利用者が存在しません")
     if not user.is_active:
         raise PermissionDeniedError("この利用者は無効化されています")
+    _record_last_seen(user)
     return user
 
 
