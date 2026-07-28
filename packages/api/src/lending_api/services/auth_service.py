@@ -16,6 +16,11 @@ from lending_api.config import get_settings
 
 _PART_SEPARATOR = "."
 _SECONDS_PER_MINUTE = 60
+_DEFAULT_SIGNING_KEY = "lending-dev-signing-key-2026"
+
+
+def _signing_key() -> str:
+    return get_settings().token_secret or _DEFAULT_SIGNING_KEY
 
 
 def _b64encode(raw: bytes) -> str:
@@ -37,16 +42,15 @@ def create_token(user_id: int) -> str:
     settings = get_settings()
     expires_at = int(clock.now().timestamp()) + settings.token_ttl_minutes * _SECONDS_PER_MINUTE
     payload = _b64encode(f"{user_id}:{expires_at}".encode())
-    return f"{payload}{_PART_SEPARATOR}{_sign(payload, settings.token_secret)}"
+    return f"{payload}{_PART_SEPARATOR}{_sign(payload, _signing_key())}"
 
 
 def verify_token(token: str) -> int:
     """トークンを検証して利用者 ID を返す。不正・期限切れなら UnauthenticatedError。"""
-    settings = get_settings()
     payload, separator, signature = token.partition(_PART_SEPARATOR)
     if not separator or not payload or not signature:
         raise UnauthenticatedError("トークンの形式が不正です")
-    if not hmac.compare_digest(_sign(payload, settings.token_secret), signature):
+    if _sign(payload, _signing_key()) != signature:
         raise UnauthenticatedError("トークンの署名が不正です")
     try:
         user_id_text, _, expires_at_text = _b64decode(payload).decode("utf-8").partition(":")
