@@ -4,6 +4,7 @@
 """
 
 from lending_core import clock, rules
+from lending_core.cache import aggregate_cache
 from lending_core.enums import ItemStatus, LoanStatus, UserRole, role_satisfies
 from lending_core.errors import NotFoundError, PermissionDeniedError
 from lending_core.models import Loan, Penalty, User
@@ -61,6 +62,7 @@ class LoanService:
         )
         item.status = ItemStatus.LOANED
         self._db.commit()
+        aggregate_cache.invalidate_prefix("aggregate:")
         return self._to_read(loan)
 
     def extend_loan(self, actor: User, loan_id: int) -> LoanRead:

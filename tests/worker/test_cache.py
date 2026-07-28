@@ -1,8 +1,8 @@
-"""TTL 付きキャッシュ (lending_worker.cache) の検証。"""
+"""TTL 付きキャッシュ (lending_core.cache) の検証。"""
 
 from datetime import date, timedelta
 
-from lending_worker.cache import AGGREGATE_KEY_PREFIX, TTLCache, aggregate_key
+from lending_core.cache import AGGREGATE_KEY_PREFIX, TTLCache, aggregate_key
 
 TTL_SECONDS = 60
 
