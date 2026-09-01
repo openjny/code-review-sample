@@ -18,6 +18,7 @@ from lending_core.errors import (
 MAX_EXTENSION_COUNT = 2
 EXTENSION_DAYS = 7
 PENALTY_RATE = Decimal("0.5")
+MAX_PENALTY_YEN = 10_000
 
 LOAN_PERIOD_DAYS: dict[ItemCategory, int] = {
     ItemCategory.TOOL: 14,
@@ -89,4 +90,7 @@ def calculate_penalty_yen(
     days = overdue_days(due_at, at)
     if days == 0:
         return 0
-    return money.multiply_yen(daily_fee_yen, days, PENALTY_RATE)
+    penalty_yen = money.multiply_yen(daily_fee_yen, days, PENALTY_RATE)
+    if penalty_yen > MAX_PENALTY_YEN:
+        return 0
+    return penalty_yen
